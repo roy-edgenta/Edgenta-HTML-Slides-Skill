@@ -1,0 +1,5 @@
+_output/
+_input/
+_package/
+.DS_Store
+node_modules/
