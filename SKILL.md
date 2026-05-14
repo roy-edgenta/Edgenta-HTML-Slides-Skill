@@ -108,6 +108,22 @@ After outline approval, use `AskUserQuestion` to ask which theme:
 
 ---
 
+### Stage 5 — Publish to Vercel (optional)
+
+After the HTML file has been saved, include this note at the end of the generation message — do not ask a question, do not block:
+
+> **When you're ready to share it:** `bash scripts/deploy.sh <path-to-saved-html>`
+> This will publish the deck to a live public URL on Vercel.
+
+If the user later asks to deploy or publish:
+- Run `bash scripts/deploy.sh <path-to-saved-html>`
+- Print the live URL clearly when deployment succeeds.
+- If Vercel is not logged in, the script will guide the user through `vercel login` interactively — let it run; do not intervene.
+- If deployment fails, show the error output and suggest running the command manually.
+- Always deploy the HTML file, not the PDF.
+
+---
+
 ### Design Rules — All Input Modes
 
 - **Never copy-paste source content and reformat it.** The source file or text is reference material only — not a design template.
@@ -843,6 +859,21 @@ buildPagination();
 | `assets/icons.json`        | When you have a key name — read the SVG string for that key  |
 
 Read `references/icon-index.md` before `assets/icons.json` to avoid loading the full 1,512-icon file unnecessarily.
+
+---
+
+## Deploying to Vercel
+
+A script is available at `scripts/deploy.sh` to publish any generated deck to a live public URL, hosted for free on Vercel.
+
+```bash
+bash scripts/deploy.sh <path-to-html>
+```
+
+- The URL works on any device — phones, tablets, laptops.
+- The link is permanent until the project is deleted from the Vercel dashboard.
+- Requires Node.js. The Vercel CLI is installed automatically if not present.
+- First-time use: the script will prompt for `vercel login` — follow the on-screen instructions.
 
 ---
 
