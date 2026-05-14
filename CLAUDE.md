@@ -23,6 +23,7 @@ When `/edgenta-html-slides` is triggered, always follow the staged workflow in `
 3. Present slide outline → wait for approval
 4. Ask theme → wait for selection
 5. Generate full HTML
+6. After saving, drop a one-liner deploy hint — do not ask, do not block
 
 Never skip stages or generate HTML before outline approval.
 
@@ -33,7 +34,7 @@ Never skip stages or generate HTML before outline approval.
 - All slides use `opacity` + `pointer-events` for visibility — never `display: none`
 - Nav bar, slide transitions, and element animations must use the exact CSS/JS templates in `SKILL.md`
 - Icons must be read verbatim from `assets/icons.json` — never written from memory
-- End every generated file with `<!-- Edgenta HTML Slides v0.3 -->`
+- End every generated file with `<!-- Edgenta HTML Slides v0.4 -->`
 
 ## PDF Export
 
@@ -45,9 +46,22 @@ Resolutions: `--4k` = 3840×2160, default = 2560×1440, `--compress` = 1920×108
 
 Requires Node.js. Playwright + Chromium install automatically on first run.
 
+## Deploy to Vercel
+
+```bash
+bash scripts/deploy.sh <path-to-html>
+```
+
+Publishes the deck to a live public URL on Vercel. Handles Vercel CLI install and login automatically on first run. Always deploy the HTML file, not the PDF.
+
 ## Packaging
 
 When the user asks to package the skill:
 1. Ask for version number
 2. Prepend `[vX.X]` to the description in `SKILL.md` frontmatter
-3. Zip into `_package/edgenta-html-slides-vX.X.skill`, excluding `_output/`, `_input/`, `_package/`, `.git/`, `.DS_Store`
+3. Update the version stamp comment in `SKILL.md` (`<!-- Edgenta HTML Slides vX.X -->`)
+4. Delete any existing `.skill` file for that version, then zip fresh:
+   ```bash
+   zip -r "_package/edgenta-html-slides-vX.X.skill" SKILL.md assets/ references/ scripts/
+   ```
+   Only these four — no `CLAUDE.md`, `README.md`, `.claude/`, or repo files.
