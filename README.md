@@ -12,15 +12,45 @@ A Claude Code skill for creating UEM Edgenta-branded HTML presentations — from
 
 ---
 
-## Usage
+## Getting Started
 
-In Claude Code, trigger the skill with:
+### 1. Download
+
+Go to the [Releases](https://github.com/roy-edgenta/Edgenta-HTML-Slides-Skill/releases) page and download the latest `edgenta-html-slides-vX.X.skill` file.
+
+### 2. Install in Claude Code
+
+Open your terminal and run:
+
+```bash
+claude skill install edgenta-html-slides-vX.X.skill
+```
+
+Or via the Claude Code UI: open the Skills panel, click **Install from file**, and select the `.skill` file.
+
+### 3. Use It
+
+In any Claude Code session, trigger the skill with:
 
 ```
 /edgenta-html-slides
 ```
 
-Or describe what you want naturally — "make me a deck about X", "turn this PDF into slides", "create a presentation for Y".
+Or just describe what you want naturally — "make me a deck about X", "turn this PDF into slides", "create a presentation for the board". Claude will detect the intent and launch the skill automatically.
+
+### 4. What Happens Next
+
+The skill walks you through a short guided flow:
+
+1. **Input** — paste notes, upload a PDF/PPTX, or start from scratch
+2. **Outline** — review and approve the proposed slide structure
+3. **Theme** — pick Default, Duo Tone Blue, or Dark Mode
+4. **Generate** — the full HTML deck is created and saved
+5. **Share** — deploy to a live URL when you're ready (see [Deploy to Vercel](#deploy-to-vercel))
+
+---
+
+## Usage
 
 ---
 
@@ -103,6 +133,21 @@ bash scripts/export-pdf.sh output/my-deck.html output/my-deck-small.pdf --compre
 
 ---
 
+## Deploy to Vercel
+
+Publish any generated deck to a live public URL — free, no server required.
+
+```bash
+bash scripts/deploy.sh _output/my-deck.html
+```
+
+- Works on any device — phones, tablets, laptops
+- Vercel CLI installs automatically if not present
+- First run: follow the on-screen `vercel login` prompt (or sign up at vercel.com)
+- To take it down: delete the project from your [Vercel dashboard](https://vercel.com/dashboard)
+
+---
+
 ## Assets
 
 | File | Description |
@@ -115,4 +160,4 @@ bash scripts/export-pdf.sh output/my-deck.html output/my-deck-small.pdf --compre
 
 ## Version
 
-Current: **v0.3**
+Current: **v0.4**
