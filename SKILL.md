@@ -1,7 +1,7 @@
 ---
 name: edgenta-html-slides
 description: >
-  [v0.3] Build or convert content into UEM Edgenta-branded HTML slide decks. Trigger on /edgenta-html-slides
+  [v0.4] Build or convert content into UEM Edgenta-branded HTML slide decks. Trigger on /edgenta-html-slides
   or when the user says "presentation", "deck", "slides", "pitch", or wants a file turned into slides.
   Outputs a single self-contained HTML file with navigation and animations.
 ---
@@ -164,7 +164,7 @@ If the user has provided enough context to infer all of the above, skip this ste
 Add the following comment as the last line before `</html>` in every generated deck:
 
 ```html
-<!-- Edgenta HTML Slides v0.3 -->
+<!-- Edgenta HTML Slides v0.4 -->
 </html>
 ```
 
