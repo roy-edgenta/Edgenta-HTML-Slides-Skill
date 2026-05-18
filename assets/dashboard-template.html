@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UEM Edgenta — HTML Slide Decks</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:       #2940BE;
+      --primary-dark:  #0d1a6e;
+      --primary-light: #3d55d4;
+      --grad:          linear-gradient(134deg, #273fbb 9%, #0d1b73 89%);
+      --bg:            #f0f2f8;
+      --card:          #ffffff;
+      --text:          #161618;
+      --muted:         #5a5c6a;
+      --font-sans:     'DM Sans', sans-serif;
+      --font-serif:    'Playfair Display', Georgia, serif;
+    }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--grad);
+      padding: 0 40px;
+      height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 20px rgba(13,26,110,0.22);
+    }
+
+    .header-logo { height: 34px; }
+
+    .deck-count {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── Page shell ── */
+    .page {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 40px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 52px 0 36px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(41,64,190,0.1);
+      margin-bottom: 40px;
+    }
+
+    .hero-text h1 {
+      font-family: var(--font-serif);
+      font-size: 38px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      margin-bottom: 6px;
+      line-height: 1.15;
+    }
+
+    .hero-text p {
+      font-size: 15px;
+      color: var(--muted);
+    }
+
+    /* ── Search ── */
+    .search-wrap {
+      position: relative;
+      width: 320px;
+      max-width: 100%;
+      flex-shrink: 0;
+    }
+
+    .search-wrap svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    #search {
+      width: 100%;
+      height: 44px;
+      padding: 0 14px 0 42px;
+      border: 1.5px solid rgba(41,64,190,0.18);
+      border-radius: 10px;
+      background: #fff;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #search:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(41,64,190,0.1);
+    }
+
+    #search::placeholder { color: rgba(90,92,106,0.5); }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 24px;
+      padding-bottom: 80px;
+    }
+
+    @media (max-width: 600px) {
+      .page { padding: 0 20px; }
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(13,26,110,0.06), 0 4px 16px rgba(13,26,110,0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 2px 8px rgba(13,26,110,0.08), 0 12px 32px rgba(13,26,110,0.14);
+    }
+
+    /* ── Thumbnail ── */
+    .card-thumb {
+      position: relative;
+      height: 160px;
+      background: var(--grad);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .card-thumb-dots {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle, rgba(255,255,255,0.1) 1.5px, transparent 1.5px);
+      background-size: 20px 20px;
+    }
+
+    .card-thumb-glow {
+      position: absolute;
+      bottom: -40px;
+      left: -40px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(99,120,255,0.25);
+      filter: blur(40px);
+    }
+
+    .card-thumb-photo {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      mix-blend-mode: multiply;
+      opacity: 0.15;
+    }
+
+    .card-thumb-num {
+      position: absolute;
+      right: 16px;
+      top: 10px;
+      font-family: var(--font-serif);
+      font-size: 52px;
+      font-weight: 700;
+      line-height: 1;
+      color: rgba(255,255,255,0.07);
+      user-select: none;
+    }
+
+    .card-thumb-title {
+      position: absolute;
+      left: 20px;
+      bottom: 18px;
+      right: 20px;
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.25;
+    }
+
+    /* ── Card body ── */
+    .card-body {
+      padding: 16px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: auto;
+    }
+
+    .card-date {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .card-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--primary);
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+      border-radius: 7px;
+      opacity: 0;
+      transition: opacity 0.2s, background 0.2s;
+    }
+
+    .card:hover .card-btn { opacity: 1; background: var(--primary-light); }
+    .card-btn svg { width: 11px; height: 11px; }
+
+    /* ── Empty / no-results ── */
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 80px 0;
+      color: var(--muted);
+    }
+
+    .empty svg { width: 48px; height: 48px; opacity: 0.25; margin-bottom: 16px; display: block; margin-inline: auto; }
+    .empty h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .empty p  { font-size: 14px; }
+
+    #no-results {
+      display: none;
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img class="header-logo"
+      src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/uemedgenta_white.png"
+      alt="UEM Edgenta">
+    <span class="deck-count" id="deck-count"></span>
+  </header>
+
+  <div class="page">
+
+    <div class="hero">
+      <div class="hero-text">
+        <h1>HTML Slide Decks</h1>
+        <p>All published presentations — click any deck to open it.</p>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="search" type="text" placeholder="Search decks…" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="grid" id="grid"></div>
+
+  </div>
+
+  <script>
+    const COVER_PHOTO = 'https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/coverimage.jpg';
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function safeUrl(url) {
+      try {
+        const u = new URL(url);
+        return (u.protocol === 'https:' || u.protocol === 'http:') ? url : '#';
+      } catch { return '#'; }
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function titleCase(str) {
+      return str.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function renderCard(deck, index) {
+      const name  = escapeHtml(deck.name || 'Untitled');
+      const title = titleCase(name);
+      const date  = escapeHtml(formatDate(deck.published));
+      const url   = safeUrl(deck.url);
+      const num   = String(index + 1).padStart(2, '0');
+
+      return `
+        <a class="card" href="${url}" target="_blank" rel="noopener" data-name="${name.toLowerCase()}">
+          <div class="card-thumb">
+            <div class="card-thumb-dots"></div>
+            <div class="card-thumb-glow"></div>
+            <img class="card-thumb-photo" src="${COVER_PHOTO}" alt="">
+            <div class="card-thumb-num">${num}</div>
+            <div class="card-thumb-title">${title}</div>
+          </div>
+          <div class="card-body">
+            <div class="card-footer">
+              <span class="card-date">${date}</span>
+              <span class="card-btn">
+                Open
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>`;
+    }
+
+    // ── Local preview fallback (used when registry.json is not found) ──
+    const SAMPLE_DECKS = [
+      { name: '{{DECK_NAME}}', url: '{{DECK_URL}}', published: '{{DECK_DATE}}' },
+    ];
+
+    async function load() {
+      const grid    = document.getElementById('grid');
+      const countEl = document.getElementById('deck-count');
+
+      let decks = [];
+      try {
+        const res  = await fetch('/registry.json');
+        if (!res.ok) throw new Error('not found');
+        const data = await res.json();
+        decks = (data.decks || []).slice().reverse();
+      } catch {
+        decks = SAMPLE_DECKS;
+      }
+
+      countEl.textContent = `${decks.length} deck${decks.length !== 1 ? 's' : ''}`;
+
+      grid.innerHTML = decks.map((d, i) => renderCard(d, i)).join('') +
+        '<div id="no-results" style="display:none;grid-column:1/-1;text-align:center;padding:60px 0;color:var(--muted);font-size:14px;">No decks match your search.</div>';
+
+      document.getElementById('search').addEventListener('input', e => {
+        const q = e.target.value.toLowerCase().trim();
+        const cards = grid.querySelectorAll('.card');
+        let visible = 0;
+        cards.forEach(c => {
+          const match = !q || c.dataset.name.includes(q);
+          c.style.display = match ? '' : 'none';
+          if (match) visible++;
+        });
+        document.getElementById('no-results').style.display = visible === 0 ? 'block' : 'none';
+      });
+    }
+
+    load();
+  </script>
+</body>
+</html>

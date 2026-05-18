@@ -12,6 +12,7 @@ A Claude Code skill (`/edgenta-html-slides`) that generates UEM Edgenta-branded 
 |------|---------|
 | `SKILL.md` | The skill definition — all generation rules, brand guidelines, templates, and CSS/JS to use verbatim |
 | `scripts/export-pdf.sh` | Bash + Playwright script to export HTML decks to PDF |
+| `scripts/deploy.sh` | Bash + Vercel CLI script to publish decks to a live public URL |
 | `assets/icons.json` | 1,512 Phosphor icons — always read SVGs from here, never reconstruct from memory |
 | `references/icon-index.md` | Index of icon names — read this first to find the right icon key before loading `icons.json` |
 

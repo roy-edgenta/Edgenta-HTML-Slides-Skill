@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{DECK_TITLE}}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --ease: cubic-bezier(0.4, 0, 0.2, 1);
+      --font-sans: 'DM Sans', sans-serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --transition-slide: transform 0.35s var(--ease), opacity 0.35s var(--ease);
+    }
+
+    /* ─── Reset & layout ─────────────────────────────── */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #111; display: flex; flex-direction: column; }
+
+    #stage {
+      position: fixed;
+      top: 40px; left: 0; right: 0; bottom: 0;
+      background: #111;
+      overflow: hidden;
+    }
+    body.is-fullscreen #stage,
+    body.is-focus #stage { top: 0; }
+
+    /* ─── Slide container ────────────────────────────── */
+    #slide-container {
+      width: 1280px; height: 720px;
+      position: absolute;
+      top: 50%; left: 50%;
+      transform-origin: center center;
+    }
+
+    /* ─── Slide base & transitions ───────────────────── */
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 1280px; height: 720px;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+      transition: var(--transition-slide);
+    }
+
+    .slide.slide-enter-left  { opacity: 0; transform: translateX(40px);  transition: none; }
+    .slide.slide-enter-right { opacity: 0; transform: translateX(-40px); transition: none; }
+    .slide.slide-exit-left,
+    .slide.slide-exit-right  { opacity: 0; transition: var(--transition-slide); }
+    .slide.slide-exit-left   { transform: translateX(-40px); }
+    .slide.slide-exit-right  { transform: translateX(40px); }
+
+    /* ─── Element entrance animations ───────────────── */
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .slide.slide-in .logo,
+    .slide.slide-in .cover-title,
+    .slide.slide-in .slide-title    { animation: fadeSlideUp 0.4s var(--ease) both; }
+    .slide.slide-in .logo           { animation-delay: 0.05s; }
+    .slide.slide-in .cover-title,
+    .slide.slide-in .slide-title    { animation-delay: 0.1s; }
+    .slide.slide-in .cover-subtitle,
+    .slide.slide-in .slide-subtitle { animation: fadeSlideUp 0.4s var(--ease) 0.18s both; }
+
+    .slide.slide-in .stat-card:nth-child(1),
+    .slide.slide-in .pillar-card:nth-child(1) { animation: fadeSlideUp 0.4s var(--ease) 0.25s both; }
+    .slide.slide-in .stat-card:nth-child(2),
+    .slide.slide-in .pillar-card:nth-child(2) { animation: fadeSlideUp 0.4s var(--ease) 0.33s both; }
+    .slide.slide-in .stat-card:nth-child(3),
+    .slide.slide-in .pillar-card:nth-child(3) { animation: fadeSlideUp 0.4s var(--ease) 0.41s both; }
+    .slide.slide-in .pillar-card:nth-child(4) { animation: fadeSlideUp 0.4s var(--ease) 0.49s both; }
+    .slide.slide-in .chart-wrap               { animation: fadeSlideUp 0.4s var(--ease) 0.25s both; }
+    .slide.slide-in .insight-item:nth-child(1){ animation: fadeSlideUp 0.4s var(--ease) 0.3s  both; }
+    .slide.slide-in .insight-item:nth-child(2){ animation: fadeSlideUp 0.4s var(--ease) 0.38s both; }
+    .slide.slide-in .insight-item:nth-child(3){ animation: fadeSlideUp 0.4s var(--ease) 0.46s both; }
+
+    /* ─── Shared fill utility ───────────────────────── */
+    .fill-abs { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+    /* ─── Content slide ──────────────────────────────── */
+    .slide-content { background: #f2f2f2; }
+
+    .slide-body {
+      position: absolute;
+      top: 36px; left: 36px;
+      width: 1208px; height: 648px;
+      overflow: hidden;
+    }
+
+    .logo {
+      position: absolute;
+      top: 36px; right: 36px;
+      width: 98px; height: 53px;
+      object-fit: contain;
+    }
+
+    .slide-title {
+      font-family: var(--font-sans);
+      font-size: 32px; font-weight: 700;
+      color: #161618; line-height: 1.1;
+    }
+
+    .slide-subtitle {
+      font-family: var(--font-sans);
+      font-size: 20px; font-weight: 400;
+      color: #36383C; margin-top: 6px;
+    }
+
+    /* ─── Breaker slide ──────────────────────────────── */
+    .slide-breaker { background: #0d1b73; }
+
+    .slide-breaker .brk-grad {
+      background: linear-gradient(134deg, #273fbb 9%, #0d1b73 89%);
+    }
+    .slide-breaker .brk-photo {
+      object-fit: cover; mix-blend-mode: multiply; opacity: 0.2;
+    }
+    .slide-breaker .brk-logo {
+      position: absolute; right: 36px; top: 36px; width: 133px;
+    }
+    .slide-breaker .brk-ghost {
+      position: absolute; left: 22px; top: 41%; transform: translateY(-50%);
+      font-family: var(--font-serif); font-size: 380px; font-weight: 900; line-height: 1;
+      color: rgba(255,255,255,0.045); letter-spacing: -12px;
+      user-select: none; pointer-events: none;
+    }
+    .slide-breaker .brk-content {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      width: 760px; text-align: center;
+      display: flex; flex-direction: column; align-items: center; gap: 22px;
+    }
+    .slide-breaker .breaker-title {
+      font-family: var(--font-serif); font-size: 72px; font-weight: 700;
+      color: #fff; line-height: 1.0;
+    }
+    .slide-breaker .breaker-subtitle {
+      font-family: var(--font-sans); font-size: 20px; color: #8792c4;
+    }
+
+    /* ─── Cover slide ────────────────────────────────── */
+    .slide-cover { background: #f0f2f8; }
+
+    .slide-cover .blue-box {
+      position: absolute;
+      inset: 36px auto 36px 36px;
+      width: 817px; border-radius: 11px; overflow: hidden;
+    }
+
+    .slide-cover .bb-gradient {
+      background: linear-gradient(134deg, #273fbb 9.11%, #0d1b73 89.3%);
+    }
+
+    .slide-cover .bb-photo {
+      object-fit: cover;
+      object-position: calc(50% - 33px) 50%;
+      mix-blend-mode: multiply; opacity: 0.2;
+    }
+
+    .slide-cover #bbDots { pointer-events: none; }
+    .slide-cover .title-block {
+      position: absolute;
+      left: 133px; top: 50%; transform: translateY(-50%);
+      width: 623px;
+      display: flex; flex-direction: column; gap: 21px;
+    }
+
+    .slide-cover .company-name {
+      font: 700 14px/normal var(--font-sans);
+      letter-spacing: 0.42px; color: #1484e0; text-transform: uppercase;
+    }
+
+    .slide-cover .cover-divider { width: 16px; height: 3px; background: #1484e0; border-radius: 2px; }
+    .slide-cover .cover-title   { font: 700 60px/59px var(--font-serif); color: #fff; }
+    .slide-cover .cover-subtitle{ font: 400 20px/normal var(--font-sans); color: #8792c4; }
+
+    .slide-cover .watermark {
+      position: absolute; left: 867px; top: 185px; width: 353px;
+      font: 900 154px/127px var(--font-sans);
+      letter-spacing: -6.16px;
+      color: rgba(22,43,117,0.05);
+      white-space: nowrap; user-select: none; pointer-events: none;
+    }
+
+    .slide-cover .logo-uem  { position: absolute; right: 36px; top: 36px;    width: 133px; }
+    .slide-cover .logo-eiaf { position: absolute; right: 36px; bottom: 36px; width: 99px;  }
+
+    /* ─── Shared dot panel canvas (cover + end) ──────── */
+    .dot-panel {
+      position: absolute; right: 0; top: 139px;
+      width: 312px; height: 443px; pointer-events: none;
+    }
+
+    /* ─── End slide ──────────────────────────────────── */
+    .slide-end { background: #f2f2f2; }
+
+    .slide-end .end-card {
+      position: absolute; inset: 36px;
+      background: #fff; border-radius: 12px; overflow: hidden;
+    }
+
+    .slide-end .end-left {
+      position: absolute;
+      left: 133px; top: 120px; width: 303px;
+      display: flex; flex-direction: column; gap: 53px;
+      font-family: var(--font-sans);
+      font-size: 16px; color: #343434;
+    }
+
+    .slide-end .end-logo { width: 131px; height: auto; }
+    .slide-end .end-contact { display: flex; flex-direction: column; gap: 20px; }
+    .slide-end .end-contact-name { line-height: 1.53; }
+    .slide-end .end-contact-name strong { color: #1e6ea6; display: block; }
+    .slide-end .end-contact-address { line-height: 1.35; }
+    .slide-end .end-contact-address a { color: #343434; text-decoration: underline; }
+    .slide-end .end-contact-web a { font-weight: 700; color: #1e6ea6; text-decoration: none; }
+    .slide-end .end-contact-web a:hover { text-decoration: underline; }
+
+    .slide-end .end-title {
+      position: absolute;
+      left: 853px; top: 120px; width: 294px;
+      font-family: var(--font-serif);
+      font-size: 60px; font-weight: 700; line-height: 1;
+      color: #162b75; text-align: right;
+    }
+
+    /* ─── Navbar ─────────────────────────────────────── */
+    #nav {
+      position: fixed;
+      top: 0; left: 0; right: 0; height: 40px;
+      background: rgba(20, 20, 24, 0.82);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+      font-family: var(--font-sans);
+      transition: opacity 0.3s ease;
+    }
+
+    .nav-deck-name {
+      font-size: 11px; font-weight: 500;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      max-width: calc(50vw - 120px);
+    }
+
+    .nav-pagination {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      display: flex; align-items: center; gap: 8px;
+      pointer-events: auto;
+    }
+
+    .nav-pagination .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transition: background 0.2s, width 0.2s, height 0.2s;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0; cursor: pointer; flex-shrink: 0;
+    }
+    .nav-pagination .dot:not(.active):hover { background: rgba(255,255,255,0.55); width: 8px; height: 8px; }
+    .nav-pagination .dot.active {
+      width: 22px; height: 22px;
+      background: rgba(255,255,255,0.15); border-radius: 50%;
+      font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.6);
+    }
+
+    .nav-counter {
+      display: none;
+      font-size: 12px; font-weight: 600;
+      color: rgba(255,255,255,0.35); letter-spacing: 0.04em;
+    }
+
+    /* ─── Shared nav button style ────────────────────── */
+    .nav-btn {
+      background: none;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: rgba(255,255,255,0.3);
+      font-family: var(--font-sans);
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      height: 24px; padding: 0 10px;
+      border-radius: 6px; cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      transition: color 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+    .nav-btn:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.4); }
+    .nav-btn svg   { width: 12px; height: 12px; flex-shrink: 0; }
+
+    .nav-help {
+      position: relative;
+      font-size: 11px;
+      justify-content: center;
+      margin-left: 8px;
+    }
+
+    .nav-help .tooltip {
+      display: none;
+      position: fixed; top: 48px;
+      right: var(--tooltip-right, 20px);
+      background: rgba(20, 20, 24, 0.96);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 12px 16px;
+      white-space: nowrap; z-index: 200;
+      backdrop-filter: blur(10px);
+    }
+    .nav-help:hover .tooltip,
+    .nav-help.tooltip-open .tooltip { display: block; }
+
+    .tooltip-row { display: flex; align-items: center; gap: 12px; padding: 5px 0; }
+    .tooltip-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .tooltip-key {
+      font-size: 11px; font-weight: 600;
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px; padding: 2px 0;
+      width: 44px; text-align: center; flex-shrink: 0;
+    }
+    .tooltip-desc { font-size: 12px; color: rgba(255,255,255,0.45); }
+
+    /* ─── Fullscreen mode ────────────────────────────── */
+    body.is-fullscreen #nav {
+      background: rgba(255,255,255,0.1);
+      border-bottom-color: transparent;
+    }
+    body.is-fullscreen .nav-deck-name       { color: rgba(0,0,0,0.4); }
+    body.is-fullscreen .nav-pagination .dot { background: rgba(41,64,190,0.5); }
+    body.is-fullscreen .nav-pagination .dot.active { background: #2940BE; color: #fff; }
+    body.is-fullscreen .nav-counter         { color: rgba(0,0,0,0.4); }
+    body.is-fullscreen .nav-btn             { color: rgba(0,0,0,0.4); border-color: rgba(0,0,0,0.2); }
+    body.is-fullscreen .nav-btn:hover       { color: rgba(0,0,0,0.7); border-color: rgba(0,0,0,0.35); }
+    body.is-fullscreen .nav-help .tooltip   { background: rgba(255,255,255,0.96); border-color: rgba(0,0,0,0.08); }
+    body.is-fullscreen .tooltip-key         { color: rgba(0,0,0,0.8); background: rgba(0,0,0,0.08); }
+    body.is-fullscreen .tooltip-desc        { color: rgba(0,0,0,0.4); }
+
+    /* ─── Focus mode (mobile) ────────────────────────── */
+    body.is-focus #nav {
+      background: rgba(20, 20, 24, 0.75);
+      backdrop-filter: blur(12px);
+    }
+    body.is-focus .nav-pagination .dot         { background: rgba(41,64,190,0.5); }
+    body.is-focus .nav-pagination .dot.active  { background: #2940BE; color: #fff; }
+
+    /* Hide slideshow/focus button in both modes */
+    body.is-fullscreen .nav-fullscreen,
+    body.is-focus .nav-fullscreen { display: none; }
+
+    /* Auto-hide nav */
+    body.is-fullscreen.nav-hidden #nav,
+    body.is-focus.nav-hidden #nav { opacity: 0; pointer-events: none; }
+
+    /* ─── Mobile ─────────────────────────────────────── */
+    @media (hover: none) and (pointer: coarse) {
+      .nav-pagination .dot { display: none; }
+      .nav-counter { display: block; }
+      .desktop-only { display: none; }
+    }
+    @media not all and (hover: none) { .mobile-only { display: none; } }
+  </style>
+
+  <!-- DECK_CSS -->
+
+</head>
+<body>
+
+  <!-- ─── Nav ───────────────────────────────────────── -->
+  <div id="nav">
+    <span class="nav-deck-name">{{DECK_TITLE}}</span>
+    <div class="nav-pagination" id="pagination"></div>
+    <span class="nav-counter" id="nav-counter">1 / 1</span>
+    <div id="nav-right" style="display:flex;align-items:center;gap:0">
+      <button class="nav-btn nav-fullscreen" id="btn-fullscreen" onclick="toggleFullscreen()">
+        <svg id="fs-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/>
+          <line x1="12" y1="17" x2="12" y2="21"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+        </svg>
+        <svg id="fs-icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
+          <line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>
+        </svg>
+        <span id="fs-label"></span>
+      </button>
+      <button class="nav-btn nav-help">?
+        <div class="tooltip">
+          <div class="tooltip-row desktop-only"><span class="tooltip-key">→</span><span class="tooltip-desc">Next slide</span></div>
+          <div class="tooltip-row desktop-only"><span class="tooltip-key">←</span><span class="tooltip-desc">Previous slide</span></div>
+          <div class="tooltip-row desktop-only"><span class="tooltip-key">H</span><span class="tooltip-desc">First slide</span></div>
+          <div class="tooltip-row desktop-only"><span class="tooltip-key">E</span><span class="tooltip-desc">Last slide</span></div>
+          <div class="tooltip-row desktop-only"><span class="tooltip-key">ESC</span><span class="tooltip-desc">Exit slideshow</span></div>
+          <div class="tooltip-row mobile-only"><span class="tooltip-key">←</span><span class="tooltip-desc">Swipe right</span></div>
+          <div class="tooltip-row mobile-only"><span class="tooltip-key">→</span><span class="tooltip-desc">Swipe left</span></div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ─── Stage ─────────────────────────────────────── -->
+  <div id="stage">
+    <div id="slide-container">
+
+      <!-- Cover slide -->
+      <div class="slide slide-cover active slide-in">
+        <div class="blue-box">
+          <div class="bb-gradient fill-abs"></div>
+          <img class="bb-photo fill-abs" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/coverimage.jpg" alt="">
+          <canvas id="bbDots" class="fill-abs"></canvas>
+        </div>
+        <div class="title-block">
+          <div class="company-name">UEM EDGENTA</div>
+          <div class="cover-divider"></div>
+          <div class="cover-title">{{COVER_TITLE}}</div>
+          <div class="cover-subtitle">{{COVER_SUBTITLE}}</div>
+        </div>
+        <div class="watermark">UEM<br>ED<br>GEN<br>TA</div>
+        <canvas id="panelDots" class="dot-panel"></canvas>
+        <img class="logo-uem"  src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/uemedgenta.png" alt="UEM Edgenta">
+        <img class="logo-eiaf" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/eiaf.png" alt="Edgenta is Always First">
+      </div>
+
+      <!-- ─── Breaker template ─────────────────────────
+           For each breaker needed: copy this block,
+           replace the placeholders, and inject it
+           inside CONTENT_SLIDES. Do not uncomment this.
+      ════════════════════════════════════════════════
+      <div class="slide slide-breaker">
+        <div class="fill-abs brk-grad"></div>
+        <img class="fill-abs brk-photo" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/coverimage.jpg" alt="">
+        <canvas class="fill-abs brk-dots"></canvas>
+        <div class="brk-ghost">{{BREAKER_NUM}}</div>
+        <img class="brk-logo" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/uemedgenta_white.png" alt="UEM Edgenta">
+        <div class="brk-content">
+          <div class="breaker-title">{{BREAKER_TITLE}}</div>
+          <div class="breaker-subtitle">{{BREAKER_SUBTITLE}}</div>
+        </div>
+      </div>
+      ════════════════════════════════════════════════ -->
+
+      <!-- CONTENT_SLIDES -->
+
+      <!-- End slide -->
+      <div class="slide slide-end">
+        <div class="end-card">
+          <div class="end-left">
+            <img class="end-logo" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/uemedgenta.png" alt="UEM Edgenta">
+            <div class="end-contact">
+              <div class="end-contact-name">
+                <strong>UEM Edgenta Berhad</strong>
+                196301000166 (5067-M)
+              </div>
+              <div class="end-contact-address">
+                Level 17, Menara UEM<br>
+                Tower 1, Avenue 7<br>
+                The Horizon, Bangsar South City.<br>
+                No. 8, Jalan Kerinchi, 59200 Kuala Lumpur.<br><br>
+                Tel : +603 2725 6688<br>
+                Fax: +603 2725 6888<br>
+                Email: <a href="mailto:communications@edgenta.com">communications@edgenta.com</a>
+              </div>
+              <div class="end-contact-web">
+                <a href="https://www.uemedgenta.com" target="_blank">www.uemedgenta.com</a>
+              </div>
+            </div>
+          </div>
+          <div class="end-title">Thank You</div>
+        </div>
+        <canvas id="endDots" class="dot-panel"></canvas>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ─── Dot animation ────────────────────────────────
+    const mouse = { x: -9999, y: -9999 };
+    addEventListener('mousemove', e => {
+      const s = Math.min(innerWidth / 1280, (innerHeight - 40) / 720);
+      mouse.x = (e.clientX - (innerWidth  - 1280 * s) / 2) / s;
+      mouse.y = (e.clientY - 40 - (innerHeight - 40 - 720 * s) / 2) / s;
+    });
+
+    function makeDots(regions, pitch = 22) {
+      const dots = [];
+      for (const [x0, y0, w, h] of regions)
+        for (let c = 0; c * pitch < w; c++)
+          for (let r = 0; r * pitch < h; r++) {
+            const bx = x0 + c * pitch + pitch / 2, by = y0 + r * pitch + pitch / 2;
+            dots.push({ bx, by, x: bx, y: by, op: 0.15 });
+          }
+      return dots;
+    }
+
+    function animateDots(canvas, dots, color, offX, offY) {
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.width, h = canvas.height;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      const R = 60, PUSH = 13;
+      (function draw() {
+        ctx.clearRect(0, 0, w, h);
+        const mx = mouse.x - offX, my = mouse.y - offY;
+        for (const d of dots) {
+          const dx = d.bx - mx, dy = d.by - my;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          let op = d.op, tx = d.bx, ty = d.by;
+          if (dist < R && dist > 0) {
+            const f = 1 - dist / R;
+            tx = d.bx + (dx / dist) * PUSH * f;
+            ty = d.by + (dy / dist) * PUSH * f;
+            op = Math.min(0.85, d.op + f * 0.7);
+          }
+          d.x += (tx - d.x) * 0.14;
+          d.y += (ty - d.y) * 0.14;
+          ctx.beginPath();
+          ctx.arc(d.x, d.y, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = color(op);
+          ctx.fill();
+        }
+        requestAnimationFrame(draw);
+      })();
+    }
+
+    // Cover — blue box dots
+    const bbCanvas = document.getElementById('bbDots');
+    bbCanvas.width = 817; bbCanvas.height = 648;
+    animateDots(bbCanvas, makeDots([[88, 0, 553, 153], [418, 482, 224, 153]]),
+      op => `rgba(255,255,255,${op.toFixed(3)})`, 36, 36);
+
+    // Breaker slides — wire up all .brk-dots canvases
+    document.querySelectorAll('.brk-dots').forEach(c => {
+      c.width = 1280; c.height = 720;
+      animateDots(c, makeDots([[0, 0, 1280, 720]]),
+        op => `rgba(255,255,255,${op.toFixed(3)})`, 0, 0);
+    });
+
+    // Cover panel + End panel (identical params)
+    [['panelDots', 968], ['endDots', 968]].forEach(([id, offX]) => {
+      const c = document.getElementById(id);
+      c.width = 312; c.height = 443;
+      animateDots(c, makeDots([[0, 0, 312, 443]]),
+        op => `rgba(22,43,117,${op.toFixed(3)})`, offX, 139);
+    });
+
+    // ─── Nav ──────────────────────────────────────────
+    const slides      = document.querySelectorAll('.slide');
+    const totalSlides = slides.length;
+    let current = 0;
+
+    const pagination = document.getElementById('pagination');
+    const navCounter = document.getElementById('nav-counter');
+    const container  = document.getElementById('slide-container');
+    const stage      = document.getElementById('stage');
+    const deckName   = document.querySelector('.nav-deck-name');
+    const navRight   = document.getElementById('nav-right');
+    const NAV_H      = 40;
+
+    const isTouch = () => window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+    function buildPagination() {
+      navCounter.textContent = `${current + 1} / ${totalSlides}`;
+      pagination.innerHTML = '';
+      if (isTouch()) return;
+      for (let i = 0; i < totalSlides; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot' + (i === current ? ' active' : '');
+        dot.textContent = i === current ? String(i + 1) : '';
+        dot.addEventListener('click', () => goTo(i));
+        pagination.appendChild(dot);
+      }
+    }
+
+    function goTo(index) {
+      const next = Math.max(0, Math.min(index, totalSlides - 1));
+      if (next === current) return;
+      const goingForward = next > current;
+      const outgoing = slides[current];
+      const incoming = slides[next];
+      incoming.classList.add(goingForward ? 'slide-enter-left' : 'slide-enter-right');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        outgoing.classList.remove('active');
+        outgoing.classList.add(goingForward ? 'slide-exit-left' : 'slide-exit-right');
+        incoming.classList.remove('slide-enter-left', 'slide-enter-right', 'slide-in');
+        void incoming.offsetWidth;
+        incoming.classList.add('active', 'slide-in');
+        outgoing.addEventListener('transitionend', () => {
+          outgoing.classList.remove('slide-exit-left', 'slide-exit-right');
+        }, { once: true });
+      }));
+      current = next;
+      buildPagination();
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goTo(current - 1);
+      if (e.key === 'h' || e.key === 'H')                  goTo(0);
+      if (e.key === 'e' || e.key === 'E')                  goTo(totalSlides - 1);
+    });
+
+    function rescale() {
+      const isFs = !!document.fullscreenElement || document.body.classList.contains('is-focus');
+      const vw = window.innerWidth;
+      const vh = isFs ? window.innerHeight : window.innerHeight - NAV_H;
+      const scale = Math.min(vw / 1280, vh / 720);
+      container.style.transform = `translate(-50%, -50%) scale(${scale})`;
+      if (isFs && !isTouch()) {
+        const scaledW = 1280 * scale;
+        const slideLeft  = (vw - scaledW) / 2;
+        const slideRight = (vw + scaledW) / 2;
+        const rightOffset = Math.max(0, vw - slideRight + 36 * scale - 20);
+        deckName.style.marginLeft  = `${Math.max(0, slideLeft + 36 * scale - 20)}px`;
+        navRight.style.marginRight = `${rightOffset}px`;
+        document.documentElement.style.setProperty('--tooltip-right', `${rightOffset + 20}px`);
+      } else {
+        deckName.style.marginLeft  = '';
+        navRight.style.marginRight = '';
+        document.documentElement.style.setProperty('--tooltip-right', '20px');
+      }
+    }
+    window.addEventListener('resize', rescale);
+    rescale();
+
+    let hideTimer = null;
+    function resetHideTimer() {
+      document.body.classList.remove('nav-hidden');
+      clearTimeout(hideTimer);
+      if (document.fullscreenElement || document.body.classList.contains('is-focus'))
+        hideTimer = setTimeout(() => document.body.classList.add('nav-hidden'), 3000);
+    }
+    document.addEventListener('mousemove', resetHideTimer);
+    document.addEventListener('keydown',   resetHideTimer);
+    stage.addEventListener('touchstart', e => {
+      if (e.target === stage) resetHideTimer();
+    }, { passive: true });
+
+    function toggleFullscreen() {
+      if (isTouch()) {
+        document.body.classList.toggle('is-focus');
+        document.body.classList.contains('is-focus') ? resetHideTimer()
+          : (clearTimeout(hideTimer), document.body.classList.remove('nav-hidden'));
+        rescale();
+      } else {
+        document.fullscreenElement ? document.exitFullscreen()
+          : document.documentElement.requestFullscreen();
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFs = !!document.fullscreenElement;
+      document.body.classList.toggle('is-fullscreen', isFs);
+      document.getElementById('fs-icon-expand').style.display = isFs ? 'none' : '';
+      document.getElementById('fs-icon-exit').style.display   = isFs ? ''     : 'none';
+      document.getElementById('fs-label').style.display       = isFs ? 'none' : '';
+      if (!isFs) { clearTimeout(hideTimer); document.body.classList.remove('nav-hidden'); }
+      else resetHideTimer();
+      rescale();
+    });
+
+    Chart.defaults.animation.duration = 900;
+    Chart.defaults.animation.easing   = 'easeOutQuart';
+
+    // ─── Init ─────────────────────────────────────────
+    if (isTouch()) {
+      document.getElementById('btn-fullscreen').style.display = 'none';
+      document.body.classList.add('is-focus');
+      resetHideTimer();
+    } else {
+      document.getElementById('fs-label').textContent = 'Slide Show';
+    }
+
+    const helpBtn = document.querySelector('.nav-help');
+    helpBtn.addEventListener('click', e => {
+      if (!isTouch()) return;
+      e.stopPropagation();
+      helpBtn.classList.toggle('tooltip-open');
+    });
+    document.addEventListener('click', () => helpBtn.classList.remove('tooltip-open'));
+
+    let touchStartX = 0, touchStartY = 0;
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40)
+        dx < 0 ? goTo(current + 1) : goTo(current - 1);
+    }, { passive: true });
+
+    buildPagination();
+  </script>
+
+  <!-- DECK_JS -->
+
+<!-- Edgenta HTML Slides v0.52 -->
+</body>
+</html>

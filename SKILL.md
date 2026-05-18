@@ -1,8 +1,8 @@
 ---
 name: edgenta-html-slides
 description: >
-  [v0.4] Build or convert content into UEM Edgenta-branded HTML slide decks. Trigger on /edgenta-html-slides
-  or when the user says "presentation", "deck", "slides", "pitch", or wants a file turned into slides.
+  [v0.52] Build or convert content into UEM Edgenta-branded HTML slide decks.
+  Only trigger on explicit /edgenta-html-slides command.
   Outputs a single self-contained HTML file with navigation and animations.
 ---
 
@@ -15,6 +15,17 @@ Type `/` in Claude Code and select **edgenta-html-slides** from the autocomplete
 ---
 
 ## Prerequisites
+
+**Every generated deck starts from `assets/base-template.html`.** Read it before generating. Fill in all placeholders and inject content at `<!-- CONTENT_SLIDES -->`, `<!-- DECK_CSS -->`, `<!-- DECK_JS -->`. Do not rewrite the shell — only add what's unique to the deck.
+
+| Placeholder | Where | Notes |
+|---|---|---|
+| `{{DECK_TITLE}}` | `<title>` + nav bar | Deck name |
+| `{{COVER_TITLE}}` | Cover slide | Main title, Playfair Display |
+| `{{COVER_SUBTITLE}}` | Cover slide | Subtitle below title |
+| `{{BREAKER_NUM}}` | Each breaker | Zero-padded: `01`, `02`, `03`… |
+| `{{BREAKER_TITLE}}` | Each breaker | Section name |
+| `{{BREAKER_SUBTITLE}}` | Each breaker | Recommended; omit the div if not needed |
 
 Read `/mnt/skills/public/frontend-design/SKILL.md` for general design thinking, typography,
 motion, spatial composition, and visual detail principles. Brand-specific rules in this file
@@ -110,26 +121,127 @@ After outline approval, use `AskUserQuestion` to ask which theme:
 
 ### Stage 5 — Publish to Vercel (optional)
 
-After the HTML file has been saved, include this note at the end of the generation message — do not ask a question, do not block:
+After the HTML file has been saved, include this one-liner at the end of the generation message — do not ask, do not block:
 
-> **When you're ready to share it:** `bash scripts/deploy.sh <path-to-saved-html>`
-> This will publish the deck to a live public URL on Vercel.
-
-If the user later asks to deploy or publish:
-- Run `bash scripts/deploy.sh <path-to-saved-html>`
-- Print the live URL clearly when deployment succeeds.
-- If Vercel is not logged in, the script will guide the user through `vercel login` interactively — let it run; do not intervene.
-- If deployment fails, show the error output and suggest running the command manually.
-- Always deploy the HTML file, not the PDF.
+> Want to share it as a live link? Just say **"publish this"** and I'll take care of it.
 
 ---
 
-### Design Rules — All Input Modes
+When the user asks to publish (any phrasing — "publish", "share", "deploy", "send me a link"):
 
-- **Never copy-paste source content and reformat it.** The source file or text is reference material only — not a design template.
-- Every slide must be redesigned from the ground up. Turn bullet lists into stat cards, tables into charts, paragraphs into callouts.
-- This applies equally to 1:1 mode, PDF inputs, PPTX inputs, and any other file type.
-- No slide should look like it was lifted from the original with brand colors applied.
+Follow this exact conversational flow. Speak naturally. Never dump raw terminal output at the user.
+
+#### Step 1 — Check Vercel login
+
+Run silently: `npx vercel whoami`
+
+- **If logged in:** "You're logged in as [username] — let's go."
+- **If not logged in:** "Before I can publish, you'll need to log in to Vercel. I've opened the login page in your browser — go ahead and sign in, then come back here and let me know when you're done."
+  - Run: `open https://vercel.com/login`
+  - Wait for the user to confirm they've logged in
+  - Re-run `npx vercel whoami` to verify
+  - If still not logged in: "Hmm, I'm still not seeing you logged in. Try running `vercel login` in your terminal, then let me know."
+  - If now logged in: "Perfect, you're in. Let's continue."
+
+#### Step 2 — Check dashboard
+
+Derive `PROJECT_NAME` as `{username}-uem-edgenta-slides`.
+Check if `~/.edgenta-slides/{PROJECT_NAME}/.vercel/project.json` exists.
+
+- **If exists:** "I can see you already have a dashboard set up. I'll add this deck to it."
+- **If not exists:** "You don't have a dashboard yet — I'll create one for you as part of this publish. It's where all your HTML slides will live, and you'll get a permanent link to it."
+
+#### Step 3 — Deploy the deck
+
+Run `bash scripts/deploy.sh <path-to-html>` silently.
+
+While it's running, say: "Publishing your deck now — this usually takes about 30 seconds..."
+
+- **If it succeeds:** read `~/.edgenta-slides/{PROJECT_NAME}/last-deploy.json` to get the result. Then go to Step 4.
+- **If it fails:** "Something went wrong while publishing. Here's what happened: [plain-English summary of the error]. Want me to try again?"
+
+#### Step 4 — Confirm success
+
+Read `last-deploy.json` — it contains:
+```json
+{
+  "status": "ok",
+  "deck_name": "...",
+  "deck_url": "https://...",
+  "dashboard_url": "https://...",
+  "first_deploy": true/false
+}
+```
+
+Respond warmly and clearly. Always give both links:
+
+> "Done! Here's what I set up for you:
+>
+> **Your deck:** [deck_url]
+> **Your dashboard:** [dashboard_url]
+>
+> The dashboard is where all your HTML slides live — anyone with the link can access it. The deck link is permanent and works on any device."
+
+If `first_deploy` is `true`, add:
+> "This is your first deck — every time you publish a new one, it'll automatically appear on your dashboard."
+
+If `first_deploy` is `false`, add:
+> "Your dashboard has been updated with this deck."
+
+---
+
+### Stage 6 — Remove a Deck (optional)
+
+When the user asks to remove, delete, or unpublish a deck from the dashboard:
+
+#### Step 1 — Show what's published
+
+Read `~/.edgenta-slides/{PROJECT_NAME}/registry.json` and list the decks clearly:
+
+> "Here are your published decks:
+> 1. [deck-name-one] — published [date]
+> 2. [deck-name-two] — published [date]
+>
+> Which one would you like to remove?"
+
+If registry doesn't exist or is empty:
+> "You don't have any published decks yet."
+
+#### Step 2 — Confirm
+
+Always confirm before removing — this is permanent:
+
+> "Just to confirm — you want to completely delete **[deck name]**? This will remove it from your dashboard and delete the live link permanently. It can't be undone."
+
+Wait for the user to confirm.
+
+#### Step 3 — Remove
+
+Run silently: `bash scripts/remove.sh <deck-name>`
+
+While running: "Removing it now and updating your dashboard..."
+
+- **If it succeeds:** read `~/.edgenta-slides/{PROJECT_NAME}/last-remove.json`, then go to Step 4.
+- **If it fails:** "Something went wrong. Here's what happened: [plain-English summary]. Want me to try again?"
+
+#### Step 4 — Confirm removal
+
+Read `last-remove.json`:
+```json
+{
+  "status": "ok",
+  "deck_name": "...",
+  "dashboard_url": "https://...",
+  "remaining_decks": 2
+}
+```
+
+> "Done — **[deck_name]** has been completely deleted. The link no longer works and it's been removed from your dashboard.
+>
+> **Your dashboard:** [dashboard_url]"
+
+If `remaining_decks` is `0`, add:
+> "Your dashboard is now empty. Publish a new deck whenever you're ready."
 
 ---
 
@@ -159,61 +271,12 @@ If the user has provided enough context to infer all of the above, skip this ste
 
 ---
 
-## Versioning
-
-Add the following comment as the last line before `</html>` in every generated deck:
-
-```html
-<!-- Edgenta HTML Slides v0.4 -->
-</html>
-```
-
-Do not change the version string. It tracks which version of the skill generated the file.
-
----
-
 ## Output Requirements
 
-- Single self-contained HTML file — no external dependencies except Google Fonts, Chart.js CDN, and the Edgenta asset URLs (all load from the internet; no local file references).
 - Slide canvas: **1280×720px**. Usable area: **1208×648px** (36px inner margin all sides).
-- Canvas must stay fully fitted to the browser viewport at all times.
-- Apply `transform: scale()` to the slide container with `transform-origin: center center`.
-- Set `flex-shrink: 0` on the slide container — without it, flexbox compresses the canvas and breaks scale centering.
-- Recalculate scale on page load and every browser resize.
 - Scale all content proportionally — fonts, spacing, icons, charts, layout. Do not reflow responsively.
 
-### Slide Body Container
-
-Every content slide **must** use a `.slide-body` wrapper for all content. This gives every layout — including charts — a fixed, predictable container to measure against, preventing overflow and Chart.js sizing errors.
-
-```html
-<div class="slide slide-content">
-  <img class="logo" src="..." alt="UEM Edgenta" />
-  <div class="slide-body">
-    <!-- all slide content goes here -->
-  </div>
-</div>
-```
-
-```css
-.slide-body {
-  position: absolute;
-  top: 36px;
-  left: 36px;
-  width: 1208px;
-  height: 648px;
-  overflow: hidden;
-}
-```
-
-- The logo sits outside `.slide-body` — it is positioned absolutely at `top: 36px; right: 36px` relative to the slide canvas.
-- All other content — titles, subtitles, grids, charts, cards — goes inside `.slide-body`.
-- Never use `padding` on `.slide slide-content` for spacing — use `.slide-body` instead.
-- Cover, Breaker, and End slides do not use `.slide-body`.
-
-**Scale formula:** `scale = min(viewportWidth / 1280, (viewportHeight - navHeight) / 720)`
-
-Where `navHeight = 40` — the fixed nav bar height, matching `NAV_H = 40` in the navbar JavaScript template.
+**Scale formula:** `scale = min(viewportWidth / 1280, (viewportHeight - 40) / 720)` — handled by the base template.
 
 ---
 
@@ -222,6 +285,13 @@ Where `navHeight = 40` — the fixed nav bar height, matching `NAV_H = 40` in th
 1. **Show, Don't Tell** — Once approved, generate the full HTML immediately without asking further questions. People discover what they want by seeing it, not by answering more prompts.
 2. **Distinctive Design** — No generic "AI slop." Every deck must feel custom-crafted and context-specific.
 3. **Visualise Content** — Charts, stat cards, icons, diagrams, and timelines are always preferred over plain bullet lists.
+
+## Design Rules
+
+- **Never copy-paste source content and reformat it.** The source file or text is reference material only — not a design template.
+- Every slide must be redesigned from the ground up. Turn bullet lists into stat cards, tables into charts, paragraphs into callouts.
+- This applies equally to 1:1 mode, PDF inputs, PPTX inputs, and any other file type.
+- No slide should look like it was lifted from the original with brand colors applied.
 
 ---
 
@@ -282,25 +352,45 @@ Appears on **content slides only** — not on Cover, Breaker, or End.
 ## Slide Types
 
 ### Cover
-- Background: full-bleed `https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/slide_cover.jpg`
-- No logo.
-- Title and subtitle **right-aligned**, left edge ~700px, right margin 36px, vertically centered at ~42% from top.
-- Title color: `#1C6BA3`, bold. Subtitle color: `#36383C`, directly below title.
+Defined in `assets/base-template.html` — do not regenerate. Fill `{{COVER_TITLE}}` and `{{COVER_SUBTITLE}}` only.
 
 ### Breaker
-- Background: full-bleed `https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/slide_breaker.jpg`
-- No logo. Same title/subtitle placement and colors as Cover.
-- Use when content transitions to a new section.
+Insert between sections. The breaker HTML lives as a commented template block inside `assets/base-template.html` (you already read this file). For each breaker needed:
+
+1. Copy the commented block from `base-template.html`
+2. Fill in the placeholders — do not leave any unfilled
+3. Inject it (uncommented) inside `<!-- CONTENT_SLIDES -->`
+
+**Placeholder rules:**
+- `{{BREAKER_NUM}}` — zero-padded section counter: `01`, `02`, `03`… increments per breaker across the whole deck
+- `{{BREAKER_TITLE}}` — the section name, always required
+- `{{BREAKER_SUBTITLE}}` — recommended; if genuinely not needed, remove the `.breaker-subtitle` div entirely
+
+The canvas (`.brk-dots`) and all styling are handled by the base template — no extra CSS or JS needed.
 
 ### End
-- Background: full-bleed `https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/slide_end.jpg`
-- No logo. No text. Use as-is. Always the last slide.
+Defined in `assets/base-template.html` — do not regenerate. It is always the last slide.
 
 ### Content
-- Title top-left, color `#161618`, font-size 32px.
-- Subtitle directly below title, color `#36383C`, font-size 20px.
+- Title top-left, color `#161618`, font-size 32px, class `slide-title`.
+- Subtitle directly below, color `#36383C`, font-size 20px, class `slide-subtitle`.
 - **Every content slide must have a subtitle — no exceptions.**
-- Logo top-right (see Logo section).
+- Logo top-right (see Logo section). The logo sits **outside** `.slide-body`.
+- All other content — titles, subtitles, grids, charts, cards — goes inside `.slide-body`.
+- Never use `padding` on `.slide-content` for spacing — use `.slide-body` instead.
+
+```html
+<div class="slide slide-content">
+  <img class="logo" src="https://raw.githubusercontent.com/roysoetantio/assets/refs/heads/main/edgenta-slide/asset/uemedgenta.png" alt="UEM Edgenta">
+  <div class="slide-body">
+    <div class="slide-title">Slide Title</div>
+    <div class="slide-subtitle">Slide subtitle</div>
+    <!-- content -->
+  </div>
+</div>
+```
+
+`.slide-body` is a fixed 1208×648px container — every layout must fit within it. Cover, Breaker, and End slides do not use `.slide-body`.
 
 ---
 
@@ -316,11 +406,7 @@ Every deck starts with a Cover and ends with an End. Insert a Breaker only when 
 
 ## Typography
 
-Load both fonts in `<head>`:
-
-```html
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
-```
+Both fonts are loaded by the base template. Reference them via CSS variables: `var(--font-sans)` (DM Sans) and `var(--font-serif)` (Playfair Display).
 
 | Font             | Usage                                       |
 |------------------|---------------------------------------------|
@@ -368,7 +454,7 @@ Deep navy backgrounds with primary blue adjusted for dark surfaces. Applies to c
 | Text             | `#f2f2f2`                                                          |
 | Muted text       | `#9aa0b8`                                                          |
 | Card border      | `#2a2f50`                                                          |
-| Nav bar bg       | Handled by the fixed navbar template — do not override             |
+| Nav bar bg       | Handled by `assets/base-template.html` — do not override           |
 
 Chart series (light→dark on dark bg): `#7b8ff5`, `#4a63e0`, `#2940BE`, `#1a2a8a`
 
@@ -381,72 +467,23 @@ Rules:
 
 ## Slide Transitions
 
-Slides transition with a directional fade-nudge: next slides enter from the right, previous slides enter from the left. Keep all slides in the DOM at all times — control visibility via `opacity` and `pointer-events`, never `display: none/block`.
-
-```css
-.slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(0);
-}
-
-.slide.active {
-  opacity: 1;
-  pointer-events: all;
-  transform: translateX(0);
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide.slide-enter-left  { opacity: 0; transform: translateX(40px);  transition: none; }
-.slide.slide-enter-right { opacity: 0; transform: translateX(-40px); transition: none; }
-
-.slide.slide-exit-left  { opacity: 0; transform: translateX(-40px); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
-.slide.slide-exit-right { opacity: 0; transform: translateX(40px);  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
-```
+All transition and entrance animation CSS is defined in `assets/base-template.html` — do not duplicate it. Keep all slides in the DOM at all times — control visibility via `opacity` and `pointer-events`, never `display: none/block`.
 
 ### Element Entrance Animations
 
-Each element within a slide staggers in from below when the slide becomes active. Add `slide-in` via JS (see `goTo`) — removing and re-adding it forces a reflow so animations replay on every visit.
+The base template already handles stagger animations for `.logo`, `.slide-title`, `.slide-subtitle`, `.stat-card`, `.pillar-card`, `.chart-wrap`, and `.insight-item`. When you introduce new repeating components, add stagger selectors inside `<!-- DECK_CSS -->` following the same `nth-child` pattern. Example:
 
 ```css
-@keyframes fadeSlideUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.slide.slide-in .logo           { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.05s both; }
-.slide.slide-in .cover-title,
-.slide.slide-in .slide-title    { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.1s  both; }
-.slide.slide-in .cover-subtitle,
-.slide.slide-in .slide-subtitle { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.18s both; }
-
-.slide.slide-in .stat-card:nth-child(1),
-.slide.slide-in .pillar-card:nth-child(1) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.25s both; }
-.slide.slide-in .stat-card:nth-child(2),
-.slide.slide-in .pillar-card:nth-child(2) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.33s both; }
-.slide.slide-in .stat-card:nth-child(3),
-.slide.slide-in .pillar-card:nth-child(3) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.41s both; }
-.slide.slide-in .pillar-card:nth-child(4) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.49s both; }
-
-.slide.slide-in .chart-wrap            { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.25s both; }
-.slide.slide-in .insight-item:nth-child(1) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.3s  both; }
-.slide.slide-in .insight-item:nth-child(2) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.38s both; }
-.slide.slide-in .insight-item:nth-child(3) { animation: fadeSlideUp 0.4s cubic-bezier(0.4,0,0.2,1) 0.46s both; }
+.slide.slide-in .timeline-item:nth-child(1) { animation: fadeSlideUp 0.4s var(--ease) 0.25s both; }
+.slide.slide-in .timeline-item:nth-child(2) { animation: fadeSlideUp 0.4s var(--ease) 0.33s both; }
+.slide.slide-in .timeline-item:nth-child(3) { animation: fadeSlideUp 0.4s var(--ease) 0.41s both; }
 ```
-
-Extend the stagger selectors for any new repeating components (e.g. `.timeline-item`, `.table-row`) following the same `nth-child` pattern.
 
 ---
 
 ## Charts
 
-Load Chart.js via CDN in `<head>`:
-
-```html
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-```
+Chart.js is loaded by the base template. The animation defaults are also set there.
 
 **Available types:** Bar, Line, Pie, Doughnut, Radar, Polar Area, Bubble, Scatter.
 
@@ -482,367 +519,6 @@ Never use `flex: 1`, `min-height: 0`, `auto`, or `%` for height. Chart.js reads 
 
 ---
 
-## Navigation Bar
-
-Use the exact template below — copy it verbatim into every generated deck. Only change the deck title text in `<span class="nav-deck-name">`. Do not alter class names, IDs, or structure.
-
-- **Height:** 40px, fixed at the top
-- **Left:** deck title — muted, uppercase, small
-- **Center:** dot pagination, always truly centered on screen; active slide shows number in a circle
-- **Right:** "Slide Show" button (monitor icon + label) in normal mode; minimize icon only (with border) in fullscreen; `?` help button with shortcut tooltip
-- **Fullscreen:** nav overlays the slide (stage takes full viewport); background switches to white at 10% opacity; deck name and button align with slide's 36px left/right margins; nav auto-hides after 3s of inactivity
-
-**Keyboard shortcuts:**
-
-| Key     | Action          |
-|---------|-----------------|
-| `→`     | Next slide      |
-| `←`     | Previous slide  |
-| `Space` | Next slide      |
-| `H`     | First slide     |
-| `E`     | Last slide      |
-
-### CSS — paste inside `<style>`
-
-```css
-/* ─── Navbar ─────────────────────────────────────── */
-#nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  height: 40px;
-  background: rgba(20, 20, 24, 0.82);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 20px;
-  z-index: 100;
-  transition: opacity 0.3s ease;
-}
-
-/* Pagination is always truly centered on screen */
-#nav .nav-pagination {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-/* In fullscreen, nav overlays the slide */
-body.is-fullscreen #nav {
-  background: rgba(255, 255, 255, 0.1);
-  border-bottom-color: transparent;
-}
-body.is-fullscreen #nav .nav-deck-name { color: rgba(0,0,0,0.4); }
-body.is-fullscreen #nav .nav-pagination .dot { background: rgba(0,0,0,0.2); }
-body.is-fullscreen #nav .nav-pagination .dot.active {
-  background: rgba(0,0,0,0.06);
-  border-color: transparent;
-  color: rgba(0,0,0,0.5);
-}
-body.is-fullscreen #nav .nav-fullscreen {
-  color: rgba(0,0,0,0.4);
-  border: 1px solid rgba(0,0,0,0.2);
-  border-radius: 6px;
-  padding: 4px 8px;
-}
-body.is-fullscreen #nav .nav-fullscreen:hover {
-  color: rgba(0,0,0,0.7);
-  background: rgba(0,0,0,0.06);
-  border-color: rgba(0,0,0,0.35);
-}
-
-/* Auto-hide nav in fullscreen after idle */
-body.is-fullscreen.nav-hidden #nav {
-  opacity: 0;
-  pointer-events: none;
-}
-
-#nav .nav-deck-name {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.35);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-#nav .nav-pagination {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  pointer-events: auto;
-}
-
-#nav .nav-pagination .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.25);
-  transition: background 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-#nav .nav-pagination .dot.active {
-  width: 22px;
-  height: 22px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.6);
-}
-
-#nav .nav-fullscreen {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.35);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 10px;
-  font-weight: 500;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  padding: 4px 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s, border-color 0.2s;
-}
-#nav .nav-fullscreen:hover {
-  color: rgba(255,255,255,0.7);
-  background: rgba(255,255,255,0.08);
-}
-#nav .nav-fullscreen svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-
-/* ─── Shortcut help ──────────────────────────────── */
-.nav-help {
-  position: relative;
-  background: none;
-  border: 1px solid rgba(255,255,255,0.2);
-  color: rgba(255,255,255,0.3);
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 8px;
-  transition: color 0.2s, border-color 0.2s;
-  flex-shrink: 0;
-}
-.nav-help:hover { color: rgba(255,255,255,0.7); border-color: rgba(255,255,255,0.4); }
-.nav-help .tooltip {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: rgba(20, 20, 24, 0.96);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
-  padding: 12px 16px;
-  white-space: nowrap;
-  z-index: 200;
-  backdrop-filter: blur(10px);
-}
-.nav-help:hover .tooltip { display: block; }
-.tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 4px 0;
-}
-.tooltip-row:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.06); }
-.tooltip-key {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  color: rgba(255,255,255,0.9);
-  background: rgba(255,255,255,0.1);
-  border-radius: 4px;
-  padding: 2px 7px;
-  min-width: 28px;
-  text-align: center;
-}
-.tooltip-desc { font-family: 'DM Sans', sans-serif; font-size: 12px; color: rgba(255,255,255,0.45); }
-
-body.is-fullscreen .nav-help { color: rgba(0,0,0,0.3); border-color: rgba(0,0,0,0.2); }
-body.is-fullscreen .nav-help:hover { color: rgba(0,0,0,0.6); border-color: rgba(0,0,0,0.4); }
-body.is-fullscreen .nav-help .tooltip { background: rgba(255,255,255,0.96); border-color: rgba(0,0,0,0.08); }
-body.is-fullscreen .tooltip-key { color: rgba(0,0,0,0.8); background: rgba(0,0,0,0.08); }
-body.is-fullscreen .tooltip-desc { color: rgba(0,0,0,0.4); }
-
-/* ─── Slide stage ────────────────────────────────── */
-#stage {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 40px;
-  background: #111;
-}
-body.is-fullscreen #stage { margin-top: 0; }
-```
-
-### HTML — paste after `<body>`
-
-```html
-<div id="nav">
-  <span class="nav-deck-name">DECK TITLE HERE</span>
-  <div class="nav-pagination" id="pagination"></div>
-  <div style="display:flex;align-items:center;gap:0">
-    <button class="nav-fullscreen" id="btn-fullscreen" onclick="toggleFullscreen()">
-      <svg id="fs-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="3" width="20" height="14" rx="2"/>
-        <line x1="12" y1="17" x2="12" y2="21"/>
-        <line x1="8" y1="21" x2="16" y2="21"/>
-      </svg>
-      <span id="fs-label">Slide Show</span>
-      <svg id="fs-icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-        <polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/>
-        <line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/>
-      </svg>
-    </button>
-    <button class="nav-help">?
-      <div class="tooltip">
-        <div class="tooltip-row"><span class="tooltip-key">→</span><span class="tooltip-desc">Next slide</span></div>
-        <div class="tooltip-row"><span class="tooltip-key">←</span><span class="tooltip-desc">Previous slide</span></div>
-        <div class="tooltip-row"><span class="tooltip-key">Space</span><span class="tooltip-desc">Next slide</span></div>
-        <div class="tooltip-row"><span class="tooltip-key">H</span><span class="tooltip-desc">First slide</span></div>
-        <div class="tooltip-row"><span class="tooltip-key">E</span><span class="tooltip-desc">Last slide</span></div>
-      </div>
-    </button>
-  </div>
-</div>
-```
-
-### JavaScript — paste inside `<script>`
-
-```js
-// ─── Navbar: pagination, scale, fullscreen ────────────
-const slides = document.querySelectorAll('.slide');
-const totalSlides = slides.length;
-let current = 0;
-
-const pagination = document.getElementById('pagination');
-const container  = document.getElementById('slide-container');
-const deckName   = document.querySelector('.nav-deck-name');
-const fsBtn      = document.getElementById('btn-fullscreen');
-const NAV_H      = 40;
-
-slides[0].classList.add('slide-in');
-
-function buildPagination() {
-  pagination.innerHTML = '';
-  for (let i = 0; i < totalSlides; i++) {
-    const dot = document.createElement('div');
-    dot.className = 'dot' + (i === current ? ' active' : '');
-    dot.textContent = i === current ? String(i + 1) : '';
-    dot.addEventListener('click', () => goTo(i));
-    pagination.appendChild(dot);
-  }
-}
-
-function goTo(index) {
-  const next = Math.max(0, Math.min(index, totalSlides - 1));
-  if (next === current) return;
-  const goingForward = next > current;
-
-  const outgoing = slides[current];
-  const incoming = slides[next];
-
-  incoming.classList.add(goingForward ? 'slide-enter-left' : 'slide-enter-right');
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      outgoing.classList.remove('active');
-      outgoing.classList.add(goingForward ? 'slide-exit-left' : 'slide-exit-right');
-
-      incoming.classList.remove('slide-enter-left', 'slide-enter-right', 'slide-in');
-      void incoming.offsetWidth; // force reflow to restart animations
-      incoming.classList.add('active', 'slide-in');
-
-      outgoing.addEventListener('transitionend', () => {
-        outgoing.classList.remove('slide-exit-left', 'slide-exit-right');
-      }, { once: true });
-    });
-  });
-
-  current = next;
-  buildPagination();
-}
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
-  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                      goTo(current - 1);
-  if (e.key === 'h' || e.key === 'H')                                     goTo(0);
-  if (e.key === 'e' || e.key === 'E')                                     goTo(totalSlides - 1);
-});
-
-function rescale() {
-  const isFs = !!document.fullscreenElement;
-  const vw = window.innerWidth;
-  const vh = isFs ? window.innerHeight : window.innerHeight - NAV_H;
-  const scale = Math.min(vw / 1280, vh / 720);
-  container.style.transform = `scale(${scale})`;
-  if (isFs) {
-    const slideLeft = (vw - 1280 * scale) / 2;
-    deckName.style.marginLeft = `${Math.max(0, slideLeft + 36 * scale - 20)}px`;
-    const slideRight = (vw + 1280 * scale) / 2;
-    fsBtn.style.marginRight = `${Math.max(0, vw - slideRight + 36 * scale - 20)}px`;
-  } else {
-    deckName.style.marginLeft = '';
-    fsBtn.style.marginRight  = '';
-  }
-}
-window.addEventListener('resize', rescale);
-rescale();
-
-function toggleFullscreen() {
-  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-  else document.exitFullscreen();
-}
-
-let hideTimer = null;
-function resetHideTimer() {
-  document.body.classList.remove('nav-hidden');
-  clearTimeout(hideTimer);
-  if (document.fullscreenElement)
-    hideTimer = setTimeout(() => document.body.classList.add('nav-hidden'), 3000);
-}
-document.addEventListener('mousemove', resetHideTimer);
-document.addEventListener('keydown',   resetHideTimer);
-
-document.addEventListener('fullscreenchange', () => {
-  const isFs = !!document.fullscreenElement;
-  document.body.classList.toggle('is-fullscreen', isFs);
-  document.getElementById('fs-icon-expand').style.display = isFs ? 'none' : '';
-  document.getElementById('fs-icon-exit').style.display   = isFs ? ''     : 'none';
-  document.getElementById('fs-label').style.display       = isFs ? 'none' : '';
-  if (!isFs) { clearTimeout(hideTimer); document.body.classList.remove('nav-hidden'); }
-  else resetHideTimer();
-  rescale();
-});
-
-buildPagination();
-```
-
----
-
 ## Layout & Overlap Rules
 
 - Minimum 24px gap between adjacent elements on all sides.
@@ -864,16 +540,14 @@ Read `references/icon-index.md` before `assets/icons.json` to avoid loading the 
 
 ## Deploying to Vercel
 
-A script is available at `scripts/deploy.sh` to publish any generated deck to a live public URL, hosted for free on Vercel.
+Publishing is handled conversationally — see **Stage 5** above. Do not run `deploy.sh` directly and paste output at the user.
 
-```bash
-bash scripts/deploy.sh <path-to-html>
-```
+**What the script does under the hood** (for reference):
+- Deploys the deck as a Vercel preview → unique permanent URL
+- Updates `registry.json` locally with the deck name, URL, and timestamp
+- Deploys `dashboard-template.html` + `registry.json` to production → `{username}-uem-edgenta-slides.vercel.app`
 
-- The URL works on any device — phones, tablets, laptops.
-- The link is permanent until the project is deleted from the Vercel dashboard.
-- Requires Node.js. The Vercel CLI is installed automatically if not present.
-- First-time use: the script will prompt for `vercel login` — follow the on-screen instructions.
+**Requirements:** Node.js must be installed. The Vercel CLI is installed automatically if not present.
 
 ---
 
