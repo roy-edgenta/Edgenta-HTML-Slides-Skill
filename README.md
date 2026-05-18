@@ -135,16 +135,30 @@ bash scripts/export-pdf.sh output/my-deck.html output/my-deck-small.pdf --compre
 
 ## Deploy to Vercel
 
-Publish any generated deck to a live public URL — free, no server required.
+Just say **"publish this"** after generating a deck — Claude handles the rest conversationally:
+
+1. Checks you're logged in to Vercel (opens browser if not)
+2. Checks if you have a dashboard — creates one if not
+3. Publishes the deck to a permanent live URL
+4. Gives you both the deck link and your dashboard link
+
+Your dashboard lives at `{username}-uem-edgenta-slides.vercel.app` and lists all your published decks.
 
 ```bash
+# Or run manually:
 bash scripts/deploy.sh _output/my-deck.html
 ```
 
-- Works on any device — phones, tablets, laptops
-- Vercel CLI installs automatically if not present
-- First run: follow the on-screen `vercel login` prompt (or sign up at vercel.com)
-- To take it down: delete the project from your [Vercel dashboard](https://vercel.com/dashboard)
+---
+
+## Remove a Deck
+
+Say **"remove [deck name]"** — Claude will confirm, then permanently delete the deployment and remove it from your dashboard.
+
+```bash
+# Or run manually:
+bash scripts/remove.sh <deck-name>
+```
 
 ---
 
@@ -152,12 +166,16 @@ bash scripts/deploy.sh _output/my-deck.html
 
 | File | Description |
 |------|-------------|
+| `assets/base-template.html` | Base HTML template all decks are built from |
+| `assets/dashboard-template.html` | Vercel dashboard index page |
 | `assets/icons.json` | 1,512 Phosphor icons (SVG strings) |
 | `references/icon-index.md` | Icon name index for quick lookup |
+| `scripts/deploy.sh` | Publish deck to Vercel |
+| `scripts/remove.sh` | Remove a deck from Vercel and dashboard |
 | `scripts/export-pdf.sh` | HTML → PDF export script |
 
 ---
 
 ## Version
 
-Current: **v0.4**
+Current: **v0.52**
